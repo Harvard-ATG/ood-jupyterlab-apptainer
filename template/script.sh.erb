@@ -1,0 +1,70 @@
+ #!/bin/bash
+
+# Benchmark info
+echo "TIMING - Starting main script at: $(date)"
+
+# Validate home directory and set it to what it should be
+# This hedges against LDAP being unavailable or timing out
+echo "original HOME=$HOME"
+echo "user=$(id -nu)"
+export HOME="/shared/home/$(id -nu)"
+echo "new HOME=$HOME"
+
+# Set working directory to home directory
+cd "${HOME}"
+
+# Set up location of apptainer image
+export container_folder=/shared/sif
+## when you test new installs you probaby want to drop the images locally in your home folder
+#export container_folder=$HOME/Programs/containers
+export container_image=$container_folder/<%= context.imagefile %>
+
+# Set additional variables
+JUPYTER_TMPDIR=${TMPDIR:-/tmp}/$(id -un)-jupyter/
+## job specific tmp in case there are conflicts with different users running on the same node
+WORKDIR=/scratch/${USER}/${SLURM_JOB_ID}
+mkdir -m 700 -p ${WORKDIR}/tmp
+
+# Create environment variables to pass to singularity container
+# See https://apptainer.org/docs/user/latest/appendix.html#e for info
+## for conda
+export APPTAINERENV_CONDA_PKGS_DIRS=${HOME}/.conda/pkgs
+## for pip
+export APPTAINERENV_XDG_CACHE_HOME=${JUPYTER_TMPDIR}/xdg_cache_home
+## for specific package mne
+export APPTAINERENV_NUMBA_CACHE_DIR=$HOME/.cache
+## Add slurm executables to PATH
+export APPTAINERENV_APPEND_PATH="/opt/slurm/bin"
+
+# enable this only if needed for debug purpose. note that the password will appear in the output 
+# set -x
+
+## bind parts of the filesystem to be able to talk to slurm from within the container
+export SING_BINDS=""
+export SING_BINDS="$SING_BINDS -B /etc/nsswitch.conf"
+export SING_BINDS="$SING_BINDS -B /etc/sssd/"
+export SING_BINDS="$SING_BINDS -B /var/lib/sss"
+export SING_BINDS="$SING_BINDS -B /opt/slurm"
+# export SING_BINDS="$SING_BINDS -B /slurm" # location does not exist, unsure of purpose
+export SING_BINDS="$SING_BINDS -B /var/run/munge"
+export SING_BINDS="$SING_BINDS -B `which sbatch `"
+export SING_BINDS="$SING_BINDS -B `which srun `"
+export SING_BINDS="$SING_BINDS -B `which sacct `"
+export SING_BINDS="$SING_BINDS -B `which scontrol `"
+export SING_BINDS="$SING_BINDS -B `which salloc `"
+# export SING_BINDS="$SING_BINDS -B /usr/lib64/slurm/ " # location does not exist, unsure of purpose
+export SING_BINDS="$SING_BINDS -B /usr/lib64/libreadline.so.6" # missing file, causing issues with scontrol
+export SING_BINDS="$SING_BINDS -B ${WORKDIR}/tmp:/tmp " ## job specific tmp dir
+echo "SING_BINDS=${SING_BINDS}"
+
+echo "JOBROOT=${JOBROOT}"
+
+echo "TIMING - Starting to load Spack environment: $(date)"
+
+# Load apptainer from spack before running image
+. /shared/spack/share/spack/setup-env.sh
+spack env activate apptainer
+
+echo "TIMING - Starting Jupyter: $(date)"
+
+apptainer exec $SING_BINDS $container_image $JOBROOT/jupyter.script.sh

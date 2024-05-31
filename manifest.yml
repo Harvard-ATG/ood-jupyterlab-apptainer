@@ -1,0 +1,10 @@
+---
+name: Jupyter Lab (Apptainer)
+category: Interactive Apps
+subcategory: Servers
+role: batch_connect
+description: |
+  This app will launch a [Jupyter Lab] server using an [Apptainer] container.
+
+  [Jupyter Lab]: https://jupyter.org/
+  [Apptainer]: https://apptainer.org/
