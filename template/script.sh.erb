@@ -14,7 +14,7 @@ echo "new HOME=$HOME"
 cd "${HOME}"
 
 # Set up location of apptainer image
-export container_folder=/shared/sif
+export container_folder=/shared/apptainerImages
 ## when you test new installs you probaby want to drop the images locally in your home folder
 #export container_folder=$HOME/Programs/containers
 export container_image=$container_folder/<%= context.imagefile %>
