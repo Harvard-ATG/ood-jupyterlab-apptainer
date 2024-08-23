@@ -1,0 +1,3 @@
+Bootstrap: docker
+Registry: quay.io
+From: jupyter/scipy-notebook:lab-4.2.4
