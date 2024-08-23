@@ -8,6 +8,7 @@ form:
   - custom_num_cores
 attributes:
   imagefile:
+    display: true
     widget: "select"
     label: "Jupyter Lab Container"
     options:
