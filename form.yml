@@ -7,7 +7,20 @@ form:
   - imagefile
   - custom_num_cores
 attributes:
-  imagefile: "scipy-notebook_lab-4.0.7.sif"
+  imagefile:
+    display: true
+    widget: "select"
+    label: "Jupyter Lab Container"
+    options:
+      - ["scipy-notebook", "scipy-notebook.sif"]
+      - ["datascience-notebook", "datascience-notebook.sif"]
+      - ["ECON 2110", "econ2110.sif"]
+      - ["Torch", "jupyter-torch.sif"]
+    help:
+      Select an container to use. Different containers are configured with
+      different software. If your instructor hasn't told you to use a specific
+      image, and you don't see your course code in the list, you likely need to
+      use the default `scipy-notebook` container.
   bc_num_slots: null
   custom_num_cores:
     widget: "number_field"
