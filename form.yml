@@ -15,6 +15,7 @@ attributes:
       - ["scipy-notebook", "scipy-notebook.sif"]
       - ["datascience-notebook", "datascience-notebook.def"]
       - ["ECON 2110", "econ2110.sif"]
+      - ["Torch", "jupyter-torch.sif"]
     help:
       Select an container to use. Different containers are configured with
       different software. If your instructor hasn't told you to use a specific
