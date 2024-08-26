@@ -13,7 +13,7 @@ attributes:
     label: "Jupyter Lab Container"
     options:
       - ["scipy-notebook", "scipy-notebook.sif"]
-      - ["datascience-notebook", "datascience-notebook.def"]
+      - ["datascience-notebook", "datascience-notebook.sif"]
       - ["ECON 2110", "econ2110.sif"]
       - ["Torch", "jupyter-torch.sif"]
     help:
