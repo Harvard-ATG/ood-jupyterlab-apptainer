@@ -50,9 +50,9 @@ c.ServerApp.port = ${port}
 c.ServerApp.port_retries = 0
 c.PasswordIdentityProvider.hashed_password = u'sha1:${SALT}:${PASSWORD_SHA1}'
 c.ServerApp.base_url = '/node/${host}/${port}/'
-c.NotebookApp.open_browser = False
+c.ServerApp.open_browser = False
 c.ServerApp.allow_origin = '*'
-c.ServerApp.notebook_dir = '${HOME}'
+c.ServerApp.root_dir = '${HOME}'
 c.ServerApp.disable_check_xsrf = True
 EOL
 )
