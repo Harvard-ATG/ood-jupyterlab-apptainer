@@ -41,6 +41,8 @@ export APPTAINERENV_APPEND_PATH="/opt/slurm/bin"
 
 ## bind parts of the filesystem to be able to talk to slurm from within the container
 export SING_BINDS=""
+export SING_BINDS="$SING_BINDS -B /shared/courseSharedFolders"
+export SING_BINDS="$SING_BINDS -B /shared/spack"
 export SING_BINDS="$SING_BINDS -B /etc/nsswitch.conf"
 export SING_BINDS="$SING_BINDS -B /etc/sssd/"
 export SING_BINDS="$SING_BINDS -B /var/lib/sss"
