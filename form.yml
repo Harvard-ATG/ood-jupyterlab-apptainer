@@ -12,9 +12,11 @@ attributes:
     widget: "select"
     label: "Jupyter Lab Container"
     options:
-      - ["scipy-notebook", "scipy-notebook.sif"]
       - ["datascience-notebook", "datascience-notebook.sif"]
+      - ["ECON 1123", "econ1123.sif"]
       - ["ECON 2110", "econ2110.sif"]
+      - ["ECON 50A", "econ50a.sif"]
+      - ["scipy-notebook", "scipy-notebook.sif"]
       - ["Torch", "jupyter-torch.sif"]
     help:
       Select an container to use. Different containers are configured with
