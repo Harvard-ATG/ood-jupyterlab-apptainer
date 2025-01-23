@@ -13,9 +13,9 @@ attributes:
     label: "Jupyter Lab Container"
     options:
       - ["datascience-notebook", "datascience-notebook.sif"]
-      - ["ECON 1123", "econ1123.sif"]
+      - ["ECON 1123", "general-econ-rstudio.sif"]
       - ["ECON 2110", "econ2110.sif"]
-      - ["ECON 50A", "econ50a.sif"]
+      - ["ECON 50A", "general-econ-rstudio.sif"]
       - ["scipy-notebook", "scipy-notebook.sif"]
       - ["Torch", "jupyter-torch.sif"]
     help:
