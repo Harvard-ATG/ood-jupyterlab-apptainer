@@ -59,5 +59,6 @@ R_PACKAGES=(
 
 for package in "${R_PACKAGES[@]}"
 do
+# https://cran.r-project.org/mirrors.html
 Rscript -e "install.packages(\"${package}\", repos='https://cloud.r-project.org/')"
 done
