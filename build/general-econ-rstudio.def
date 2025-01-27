@@ -2,7 +2,7 @@ Bootstrap: docker
 Registry: quay.io
 From: jupyter/datascience-notebook:lab-4.2.4
 
-%post
+%post -c /bin/bash
 cat << EOF > /tmp/requirements.txt
 arch
 # fixedeffect # Unclear that this is a python package
