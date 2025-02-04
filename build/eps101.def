@@ -1,0 +1,9 @@
+Bootstrap: docker
+Registry: quay.io
+From: jupyter/scipy-notebook:lab-4.2.4
+
+%post
+pip3 install \
+    cartopy \
+    gsw \
+    netCDF4

@@ -16,6 +16,7 @@ attributes:
       - ["ECON 1123", "general-econ-rstudio.sif"]
       - ["ECON 2110", "econ2110.sif"]
       - ["ECON 50A", "general-econ-rstudio.sif"]
+      - ["E-PSCI 101", eps101.sif]
       - ["Torch", "jupyter-torch.sif"]
       - ["datascience-notebook", "datascience-notebook.sif"]
     help:
