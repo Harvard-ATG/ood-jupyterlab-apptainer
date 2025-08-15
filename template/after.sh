@@ -1,12 +1,20 @@
+#!/usr/bin/env bash
+
+this_script="template/after.sh"
+
+log() {
+    echo -e "[$(date -Iseconds)][${this_script}] $1"
+}
+
 # Wait for the Jupyter Notebook server to start
-echo "Waiting for Jupyter Notebook server to open port ${port}..."
-echo "TIMING - Starting wait at: $(date)"
+log "Waiting for Jupyter Notebook server to open port ${port}..."
+log "Starting wait"
 if wait_until_port_used "${host}:${port}" 600; then
-  echo "Discovered Jupyter Notebook server listening on port ${port}!"
-  echo "TIMING - Wait ended at: $(date)"
+  log "Discovered Jupyter Notebook server listening on port ${port}!"
+  log "Wait ended"
 else
-  echo "Timed out waiting for Jupyter Notebook server to open port ${port}!"
-  echo "TIMING - Wait ended at: $(date)"
+  log "Timed out waiting for Jupyter Notebook server to open port ${port}!"
+  log "Wait ended"
   pkill -P ${SCRIPT_PID}
   clean_up 1
 fi
