@@ -1,6 +1,6 @@
 Bootstrap: docker
 Registry: quay.io
-From: jupyter/scipy-notebook:lab-4.2.4
+From: jupyter/scipy-notebook:lab-4.4.5
 
 %post
 pip3 install \
