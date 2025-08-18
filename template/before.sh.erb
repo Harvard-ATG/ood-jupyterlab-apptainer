@@ -26,6 +26,18 @@
 #   - $password
 #       The plain text password used to authenticate to the web server with
 
+this_script="template/before.sh.erb"
+
+log() {
+    echo -e "[$(date -Iseconds)][${this_script}] $1"
+}
+
+# Validate home directory and set it to what it should be
+log "original HOME=$HOME"
+log "user=$(id -nu)"
+export HOME="/shared/home/$(id -nu)"
+log "new HOME=$HOME"
+
 # Export the module function if it exists
 [[ $(type -t module) == "function" ]] && export -f module
 
@@ -45,15 +57,15 @@ export CONFIG_FILE="${PWD}/config.py"
 (
 umask 077
 cat > "${CONFIG_FILE}" << EOL
-c.NotebookApp.ip = '0.0.0.0'
-c.NotebookApp.port = ${port}
-c.NotebookApp.port_retries = 0
-c.NotebookApp.password = u'sha1:${SALT}:${PASSWORD_SHA1}'
-c.NotebookApp.base_url = '/node/${host}/${port}/'
+c.ServerApp.ip = '0.0.0.0'
+c.ServerApp.port = ${port}
+c.ServerApp.port_retries = 0
+c.PasswordIdentityProvider.hashed_password = u'sha1:${SALT}:${PASSWORD_SHA1}'
+c.ServerApp.base_url = '/node/${host}/${port}/'
 c.NotebookApp.open_browser = False
-c.NotebookApp.allow_origin = '*'
-c.NotebookApp.notebook_dir = '${HOME}'
-c.NotebookApp.disable_check_xsrf = True
+c.ServerApp.allow_origin = '*'
+c.ServerApp.notebook_dir = '${HOME}'
+c.ServerApp.disable_check_xsrf = True
 EOL
 )
 

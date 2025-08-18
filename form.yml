@@ -1,34 +1,4 @@
----
-cluster: "*"
-cacheable: false
-form:
-  - bc_num_hours
-  - bc_num_slots
-  - imagefile
-  - custom_num_cores
-attributes:
-  imagefile:
-    display: true
-    widget: "select"
-    label: "Jupyter Lab Container"
-    options:
-      - ["scipy-notebook", "scipy-notebook.sif"]
-      - ["ECON 1123", "general-econ-rstudio.sif"]
-      - ["ECON 2110", "econ2110.sif"]
-      - ["ECON 50A", "general-econ-rstudio.sif"]
-      - ["E-PSCI 101", eps101.sif]
-      - ["Torch", "jupyter-torch.sif"]
-      - ["datascience-notebook", "datascience-notebook.sif"]
-    help:
-      Select an container to use. Different containers are configured with
-      different software. If your instructor hasn't told you to use a specific
-      image, and you don't see your course code in the list, you likely need to
-      use the default `scipy-notebook` container.
-  bc_num_slots: null
-  custom_num_cores:
-    widget: "number_field"
-    label: "Number of CPUs"
-    value: 1
-    min: 1
-    max: 4
-    step: 1
+# This OnDemand app configuration uses sub-apps by default to allow for custom
+# sub-apps. The default configuration is in `local/generic.yml.erb`, which is
+# the file that should be referenced for creating a new sub-app with this
+# configuration.

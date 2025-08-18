@@ -1,6 +1,6 @@
 Bootstrap:docker
 Registry: quay.io
-From: jupyter/datascience-notebook:lab-4.2.4
+From: jupyter/datascience-notebook:lab-4.4,5
 
 %post
 cat << EOF > /tmp/requirements.txt

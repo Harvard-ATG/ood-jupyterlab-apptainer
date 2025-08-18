@@ -1,14 +1,13 @@
  #!/bin/bash
 
-# Benchmark info
-echo "TIMING - Starting main script at: $(date)"
+this_script="template/script.sh.erb"
 
-# Validate home directory and set it to what it should be
-# This hedges against LDAP being unavailable or timing out
-echo "original HOME=$HOME"
-echo "user=$(id -nu)"
-export HOME="/shared/home/$(id -nu)"
-echo "new HOME=$HOME"
+log() {
+    echo -e "[$(date -Iseconds)][${this_script}] $1"
+}
+
+# Benchmark info
+log "Starting main script"
 
 # Set working directory to home directory
 cd "${HOME}"
@@ -41,32 +40,32 @@ export APPTAINERENV_APPEND_PATH="/opt/slurm/bin"
 
 ## bind parts of the filesystem to be able to talk to slurm from within the container
 export SING_BINDS=""
-export SING_BINDS="$SING_BINDS -B /shared/courseSharedFolders"
-export SING_BINDS="$SING_BINDS -B /shared/spack"
-export SING_BINDS="$SING_BINDS -B /etc/nsswitch.conf"
-export SING_BINDS="$SING_BINDS -B /etc/sssd/"
-export SING_BINDS="$SING_BINDS -B /var/lib/sss"
-export SING_BINDS="$SING_BINDS -B /opt/slurm"
+# export SING_BINDS="$SING_BINDS -B /shared/courseSharedFolders"
+# export SING_BINDS="$SING_BINDS -B /shared/spack"
+# export SING_BINDS="$SING_BINDS -B /etc/nsswitch.conf"
+# export SING_BINDS="$SING_BINDS -B /etc/sssd/"
+# export SING_BINDS="$SING_BINDS -B /var/lib/sss"
+# export SING_BINDS="$SING_BINDS -B /opt/slurm"
 # export SING_BINDS="$SING_BINDS -B /slurm" # location does not exist, unsure of purpose
-export SING_BINDS="$SING_BINDS -B /var/run/munge"
-export SING_BINDS="$SING_BINDS -B `which sbatch `"
-export SING_BINDS="$SING_BINDS -B `which srun `"
-export SING_BINDS="$SING_BINDS -B `which sacct `"
-export SING_BINDS="$SING_BINDS -B `which scontrol `"
-export SING_BINDS="$SING_BINDS -B `which salloc `"
+# export SING_BINDS="$SING_BINDS -B /var/run/munge"
+# export SING_BINDS="$SING_BINDS -B `which sbatch `"
+# export SING_BINDS="$SING_BINDS -B `which srun `"
+# export SING_BINDS="$SING_BINDS -B `which sacct `"
+# export SING_BINDS="$SING_BINDS -B `which scontrol `"
+# export SING_BINDS="$SING_BINDS -B `which salloc `"
 # export SING_BINDS="$SING_BINDS -B /usr/lib64/slurm/ " # location does not exist, unsure of purpose
-export SING_BINDS="$SING_BINDS -B /usr/lib64/libreadline.so.6" # missing file, causing issues with scontrol
+# export SING_BINDS="$SING_BINDS -B /usr/lib64/libreadline.so.6" # missing file, causing issues with scontrol
 export SING_BINDS="$SING_BINDS -B ${WORKDIR}/tmp:/tmp " ## job specific tmp dir
-echo "SING_BINDS=${SING_BINDS}"
+log "SING_BINDS=${SING_BINDS}"
 
-echo "JOBROOT=${JOBROOT}"
+log "JOBROOT=${JOBROOT}"
 
-echo "TIMING - Starting to load Spack environment: $(date)"
+log "Starting to load Spack environment"
 
 # Load apptainer from spack before running image
 . /shared/spack/share/spack/setup-env.sh
 spack env activate apptainer
 
-echo "TIMING - Starting Jupyter: $(date)"
+log "Starting Jupyter"
 
 apptainer exec $SING_BINDS $container_image $JOBROOT/jupyter.script.sh
