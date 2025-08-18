@@ -40,21 +40,21 @@ export APPTAINERENV_APPEND_PATH="/opt/slurm/bin"
 
 ## bind parts of the filesystem to be able to talk to slurm from within the container
 export SING_BINDS=""
-export SING_BINDS="$SING_BINDS -B /shared/courseSharedFolders"
-export SING_BINDS="$SING_BINDS -B /shared/spack"
-export SING_BINDS="$SING_BINDS -B /etc/nsswitch.conf"
-export SING_BINDS="$SING_BINDS -B /etc/sssd/"
-export SING_BINDS="$SING_BINDS -B /var/lib/sss"
-export SING_BINDS="$SING_BINDS -B /opt/slurm"
+# export SING_BINDS="$SING_BINDS -B /shared/courseSharedFolders"
+# export SING_BINDS="$SING_BINDS -B /shared/spack"
+# export SING_BINDS="$SING_BINDS -B /etc/nsswitch.conf"
+# export SING_BINDS="$SING_BINDS -B /etc/sssd/"
+# export SING_BINDS="$SING_BINDS -B /var/lib/sss"
+# export SING_BINDS="$SING_BINDS -B /opt/slurm"
 # export SING_BINDS="$SING_BINDS -B /slurm" # location does not exist, unsure of purpose
-export SING_BINDS="$SING_BINDS -B /var/run/munge"
-export SING_BINDS="$SING_BINDS -B `which sbatch `"
-export SING_BINDS="$SING_BINDS -B `which srun `"
-export SING_BINDS="$SING_BINDS -B `which sacct `"
-export SING_BINDS="$SING_BINDS -B `which scontrol `"
-export SING_BINDS="$SING_BINDS -B `which salloc `"
+# export SING_BINDS="$SING_BINDS -B /var/run/munge"
+# export SING_BINDS="$SING_BINDS -B `which sbatch `"
+# export SING_BINDS="$SING_BINDS -B `which srun `"
+# export SING_BINDS="$SING_BINDS -B `which sacct `"
+# export SING_BINDS="$SING_BINDS -B `which scontrol `"
+# export SING_BINDS="$SING_BINDS -B `which salloc `"
 # export SING_BINDS="$SING_BINDS -B /usr/lib64/slurm/ " # location does not exist, unsure of purpose
-export SING_BINDS="$SING_BINDS -B /usr/lib64/libreadline.so.6" # missing file, causing issues with scontrol
+# export SING_BINDS="$SING_BINDS -B /usr/lib64/libreadline.so.6" # missing file, causing issues with scontrol
 export SING_BINDS="$SING_BINDS -B ${WORKDIR}/tmp:/tmp " ## job specific tmp dir
 log "SING_BINDS=${SING_BINDS}"
 
