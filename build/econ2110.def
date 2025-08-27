@@ -16,10 +16,67 @@ scipy
 scikit-learn
 stargazer
 statsmodels
-rdrobust
-binsreg
-seaborn
-lpdensity
 EOF
 
 pip install -r /tmp/requirements.txt
+
+R_PACKAGES=(
+    "AER" 
+    "MASS"
+    "binsreg"
+    "boot"
+    "broom"
+    "car"
+    "data.table"
+    "dfadjust"
+    "dplyr"
+    "estimatr"
+    "fixest"
+    "gamlr"
+    "ggplot2"
+    "haven"
+    "ivDiag"
+    "jsonlite"
+    "kableExtra"
+    "lfe"
+    "lib"
+    "lmtest"
+    "lpdensity"
+    "lubridate"
+    "maptpx"
+    "margins"
+    "msm"
+    "np"
+    "nprobust"
+    "oglmx"
+    "randomForest"
+    "remotes"
+    "rdrobust"
+    "rpart"
+    "rpart.plot"
+    "rugarch"
+    "ranger"
+    "sampleSelection"
+    "sandwich"
+    "stargazer"
+    "statar"
+    "textir"
+    "tidyverse"
+    "tm"
+    "zoo"
+)
+
+R_GH_PACKAGES=(
+    "OpportunityInsights/oiplot"
+    "grantmcdermott/lfe2fixest"
+    "manutzn/fredo"
+)
+
+for package in "${R_PACKAGES[@]}"
+do
+Rscript -e "install.packages(\"${package}\")"
+done
+
+for package in "${R_GH_PACKAGES[@]}"
+do
+Rscript -e "devtools::install_github(\"${package}\")
