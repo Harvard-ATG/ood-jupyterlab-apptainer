@@ -16,50 +16,10 @@ scipy
 scikit-learn
 stargazer
 statsmodels
+rdrobust
+binsreg
+seaborn
+lpdensity
 EOF
 
 pip install -r /tmp/requirements.txt
-
-R_PACKAGES=(
-    "AER" 
-    "MASS"
-    "boot"
-    "broom"
-    "car"
-    "data.table"
-    "dfadjust"
-    "dplyr"
-    "estimatr"
-    "gamlr"
-    "ggplot2"
-    "haven"
-    "ivDiag"
-    "kableExtra"
-    "lfe"
-    "lib"
-    "lmtest"
-    "lpdensity"
-    "lubridate"
-    "maptpx"
-    "margins"
-    "msm"
-    "np"
-    "nprobust"
-    "oglmx"
-    "randomForest"
-    "rdrobust"
-    "rpart"
-    "rugarch"
-    "sampleSelection"
-    "sandwich"
-    "stargazer"
-    "statar"
-    "textir"
-    "tidyverse"
-    "tm"
-    "zoo")
-
-for package in "${R_PACKAGES[@]}"
-do
-Rscript -e "install.packages(\"${package}\")"
-done
