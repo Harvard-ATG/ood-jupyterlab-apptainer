@@ -1,8 +1,11 @@
-Bootstrap:docker
-Registry: quay.io
-From: jupyter/datascience-notebook:lab-4.4.5
+Bootstrap:localimage
+From: /shared/apptainerImages/datascience-notebook.sif
 
-%post
+%post -c /bin/bash
+echo "shell: $0"
+
+apt-get update && apt-get -y install cmake
+
 cat << EOF > /tmp/requirements.txt
 arch
 # fixedeffect # Unclear that this is a python package
@@ -74,9 +77,10 @@ R_GH_PACKAGES=(
 
 for package in "${R_PACKAGES[@]}"
 do
-Rscript -e "install.packages(\"${package}\")"
+Rscript -e "install.packages(\"${package}\", repos=\"https://archive.linux.duke.edu/cran/\")"
 done
 
 for package in "${R_GH_PACKAGES[@]}"
 do
-Rscript -e "devtools::install_github(\"${package}\")
+Rscript -e "devtools::install_github(\"${package}\")"
+done
