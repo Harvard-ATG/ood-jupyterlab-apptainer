@@ -1,5 +1,6 @@
 Bootstrap:localimage
 From: /shared/apptainerImages/datascience-notebook.sif
+# For this build, I pulled from a local image file that had already been created to speed up the build process. I'm not sure if this is something we want to make a more general pattern, though.
 
 %post -c /bin/bash
 echo "shell: $0"
