@@ -1,8 +1,12 @@
-Bootstrap:docker
-Registry: quay.io
-From: jupyter/datascience-notebook:lab-4.4,5
+Bootstrap:localimage
+From: /shared/apptainerImages/datascience-notebook.sif
+# For this build, I pulled from a local image file that had already been created to speed up the build process. I'm not sure if this is something we want to make a more general pattern, though.
 
-%post
+%post -c /bin/bash
+echo "shell: $0"
+
+apt-get update && apt-get -y install cmake
+
 cat << EOF > /tmp/requirements.txt
 arch
 # fixedeffect # Unclear that this is a python package
@@ -23,6 +27,7 @@ pip install -r /tmp/requirements.txt
 R_PACKAGES=(
     "AER" 
     "MASS"
+    "binsreg"
     "boot"
     "broom"
     "car"
@@ -30,10 +35,12 @@ R_PACKAGES=(
     "dfadjust"
     "dplyr"
     "estimatr"
+    "fixest"
     "gamlr"
     "ggplot2"
     "haven"
     "ivDiag"
+    "jsonlite"
     "kableExtra"
     "lfe"
     "lib"
@@ -47,9 +54,12 @@ R_PACKAGES=(
     "nprobust"
     "oglmx"
     "randomForest"
+    "remotes"
     "rdrobust"
     "rpart"
+    "rpart.plot"
     "rugarch"
+    "ranger"
     "sampleSelection"
     "sandwich"
     "stargazer"
@@ -57,9 +67,21 @@ R_PACKAGES=(
     "textir"
     "tidyverse"
     "tm"
-    "zoo")
+    "zoo"
+)
+
+R_GH_PACKAGES=(
+    "OpportunityInsights/oiplot"
+    "grantmcdermott/lfe2fixest"
+    "manutzn/fredo"
+)
 
 for package in "${R_PACKAGES[@]}"
 do
-Rscript -e "install.packages(\"${package}\")"
+Rscript -e "install.packages(\"${package}\", repos=\"https://archive.linux.duke.edu/cran/\")"
+done
+
+for package in "${R_GH_PACKAGES[@]}"
+do
+Rscript -e "devtools::install_github(\"${package}\")"
 done
