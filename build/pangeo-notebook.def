@@ -1,6 +1,6 @@
 Bootstrap: docker
 Registry: quay.io
-From: pangeo/pangeo-notebook:latest
+From: pangeo/pangeo-notebook:2025.12.30
 # Docker image for data analytics notebook from Pangeo - community for big data in the geosciences, see pangeo.io
 
 %post -c /bin/bash
