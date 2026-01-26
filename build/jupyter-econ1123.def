@@ -5,7 +5,12 @@ From: /shared/apptainerImages/datascience-notebook.sif
 %post -c /bin/bash
 echo "shell: $0"
 
-apt-get update && apt-get -y install cmake fontconfig
+apt-get update && apt-get -y install \
+    cmake \
+    libfreetype6-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev
 
 cat << EOF > /tmp/requirements.txt
 arch
