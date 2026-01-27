@@ -5,7 +5,12 @@ From: /shared/apptainerImages/datascience-notebook.sif
 %post -c /bin/bash
 echo "shell: $0"
 
-apt-get update && apt-get -y install cmake
+apt-get update && apt-get -y install \
+    cmake \
+    libfreetype6-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev
 
 cat << EOF > /tmp/requirements.txt
 arch
@@ -20,6 +25,10 @@ scipy
 scikit-learn
 stargazer
 statsmodels
+rdrobust
+binsreg
+seaborn
+lpdensity
 EOF
 
 pip install -r /tmp/requirements.txt
