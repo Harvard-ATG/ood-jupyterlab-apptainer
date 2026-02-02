@@ -35,6 +35,12 @@ fi
 #export container_folder=$HOME/Programs/containers
 export container_image=$container_folder/$IMAGE_FILE
 
+# Set additional variables
+JUPYTER_TMPDIR=${TMPDIR:-/tmp}/$(id -un)-jupyter/
+## job specific tmp in case there are conflicts with different users running on the same node
+WORKDIR=/scratch/${USER}/${SLURM_JOB_ID}
+mkdir -m 700 -p ${WORKDIR}/tmp
+
 # OPTIONAL: Set Up Scratch/Lustre Working Directory for Jupyter Cache, Runtime, Temp"
 # We use SLURM_JOB_ID to create a unique, disposable scratch folder for every job.
 # This prevents permission conflicts if a user runs multiple jobs.
