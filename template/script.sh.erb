@@ -41,13 +41,9 @@ JUPYTER_TMPDIR=${TMPDIR:-/tmp}/$(id -un)-jupyter/
 WORKDIR=/scratch/${USER}/${SLURM_JOB_ID}
 mkdir -m 700 -p ${WORKDIR}/tmp
 
-# OPTIONAL: Set Up Scratch/Lustre Working Directory for Jupyter Cache, Runtime, Temp"
-# We use SLURM_JOB_ID to create a unique, disposable scratch folder for every job.
-# This prevents permission conflicts if a user runs multiple jobs.
-# TO ENABLE: Uncomment the 2 lines below.
+# OPTIONAL: Set Up Scratch/Lustre Working Directory for Jupyter Cache, and Runtime"
 # -------------------------------------------------------------------------
-# WORKDIR="/scratch/${USER}/${SLURM_JOB_ID}"
-# mkdir -m 700 -p "${WORKDIR}"/{runtime,cache,tmp}
+# mkdir -m 700 -p "${WORKDIR}"/{runtime,cache}
 
 # OPTIONAL: REDIRECT JUPYTER CACHE, RUNTIME, and TMP to Scratch/Lustre
 # This prevents heavy I/O on EFS home directories.
