@@ -12,17 +12,53 @@ log "Starting main script"
 # Set working directory to home directory
 cd "${HOME}"
 
+# Define Image Path 
+# Only pangeo-notebook.sif has been migrated to Lustre (/scratch). 
+# All other images should default to the EFS (/shared) location for safety.
+
+# The image selected passed in via the context variable 'imagefile'
+IMAGE_FILE="<%= context.imagefile %>"
+
+if [[ "$IMAGE_FILE" == "pangeo-notebook.sif" ]]; then
+    # FAST PATH (Lustre)
+    log "Image is Pangeo Notebook, using Lustre path for container image."
+    export container_folder=/scratch/apptainerImages/
+else
+    # STANDARD PATH (EFS)
+    log "Image is ${IMAGE_FILE}, using standard EFS path for container image."
+    export container_folder=/shared/apptainerImages
+fi
+
+
 # Set up location of apptainer image
-export container_folder=/shared/apptainerImages
 ## when you test new installs you probaby want to drop the images locally in your home folder
 #export container_folder=$HOME/Programs/containers
-export container_image=$container_folder/<%= context.imagefile %>
+export container_image=$container_folder/$IMAGE_FILE
 
 # Set additional variables
 JUPYTER_TMPDIR=${TMPDIR:-/tmp}/$(id -un)-jupyter/
 ## job specific tmp in case there are conflicts with different users running on the same node
 WORKDIR=/scratch/${USER}/${SLURM_JOB_ID}
 mkdir -m 700 -p ${WORKDIR}/tmp
+
+# OPTIONAL: Set Up Scratch/Lustre Working Directory for Jupyter Cache, and Runtime"
+# -------------------------------------------------------------------------
+# mkdir -m 700 -p "${WORKDIR}"/{runtime,cache}
+
+# OPTIONAL: REDIRECT JUPYTER CACHE, RUNTIME, and TMP to Scratch/Lustre
+# This prevents heavy I/O on EFS home directories.
+# Jupyter writes frequent "heartbeat" files, sockets, and logs. By default, 
+# these go to the user's Home directory (EFS). 
+# If a large class (50+ students) launches simultaneously, thousands of tiny 
+# writes can hit the EFS IOPS limit, causing the storage to "freeze" for everyone.
+# TO ENABLE: Uncomment the block below to force these temporary files onto Lustre.
+# This isolates the I/O load and protects the Home directory.
+# -------------------------------------------------------------------------
+# export APPTAINERENV_JUPYTER_RUNTIME_DIR="${WORKDIR}/runtime"
+# export APPTAINERENV_XDG_CACHE_HOME="${WORKDIR}/cache"
+# export APPTAINERENV_TMPDIR="${WORKDIR}/tmp"
+
+
 
 # Create environment variables to pass to singularity container
 # See https://apptainer.org/docs/user/latest/appendix.html#e for info
@@ -41,6 +77,7 @@ export APPTAINERENV_APPEND_PATH="/opt/slurm/bin"
 ## bind parts of the filesystem to be able to talk to slurm from within the container
 export SING_BINDS=""
 export SING_BINDS="$SING_BINDS -B /shared"
+export SING_BINDS="$SING_BINDS -B /scratch"
 # export SING_BINDS="$SING_BINDS -B /etc/nsswitch.conf"
 # export SING_BINDS="$SING_BINDS -B /etc/sssd/"
 # export SING_BINDS="$SING_BINDS -B /var/lib/sss"
