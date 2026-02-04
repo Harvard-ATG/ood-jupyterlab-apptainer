@@ -42,11 +42,21 @@ PASSWORD="${MY_JUP_PASSWD}"
 
 
 # --- 2. FRONTEND CONFIG: disable Lab extensions via page_config.json ---
-# FIX: Separated the variable definition from the mkdir command
+
+
+
+# --- 3. GENERATE RUNTIME CONFIGURATION FILE ---
+# MOVING AWAY FROM: Passing raw CLI flags (e.g., --ip, --port) which may be prone 
+#                  to shell-escaping errors and cause "Missing Extension" popups.
+#
+# MOVING TOWARD:   A generated Python config file to 
+#                  simultaneously disable Backend and Frontend components to 
+#                  fix UI sluggishness and icon "lag."
+# -----------------------------------------------------------------------------
+# Creat e Jupyter Lab frontend config directory if it doesn't exist
 LABCONFIG_DIR="${HOME}/.jupyter/labconfig"
 mkdir -p "${LABCONFIG_DIR}"
 
-# We use quoted 'EOF' to prevent any accidental shell expansion in the JSON
 cat > "${LABCONFIG_DIR}/page_config.json" <<'EOF'
 {
   "disabledExtensions": {
@@ -62,15 +72,7 @@ cat > "${LABCONFIG_DIR}/page_config.json" <<'EOF'
 }
 EOF
 
-
-# --- 3. GENERATE RUNTIME CONFIGURATION FILE ---
-# MOVING AWAY FROM: Passing raw CLI flags (e.g., --ip, --port) which may be prone 
-#                  to shell-escaping errors and cause "Missing Extension" popups.
-#
-# MOVING TOWARD:   A generated Python config file to 
-#                  simultaneously disable Backend and Frontend components to 
-#                  fix UI sluggishness and icon "lag."
-# -----------------------------------------------------------------------------
+# Create a temporary Jupyter config file for the server settings
 CONF_FILE="${PWD}/jupyter_server_config.py"
 
 cat <<EOF > "${CONF_FILE}"
@@ -101,17 +103,6 @@ c.ServerApp.jpserver_extensions = {
     'nbgitpuller': False,                   # External sync service
     'panel.io.jupyter_server_extension': False # Dask-related, heavy JS load
 }
-
-# B. FRONTEND: Stop the Browser from requesting these icons (Fixes rendering lag)
-# By matching this list with the backend above, we prevent "Extension Missing" popups.
-c.LabConfig.disabled_extensions = [
-    '@jupyterlab/extensionmanager-extension', # Goal to prevents CPU spike on startup
-    '@jupyterlab/git',                        # Removes sidebar Git icon, git can be handled via terminal
-    '@jupyterlab/github',                     # Removes sidebar GitHub icon, git can be handled via terminal
-    '@jupyterlab/google-drive',                # Removes sidebar Drive icon, prevents heavy Google API calls
-    'dask-labextension',                      # Removes sidebar Dask icon, Dask can still be used via terminal or code
-    'jupyter-leaflet'                         # Prevents heavy GIS JS load, static maps can still be used in notebooks
-]
 EOF
 
 
