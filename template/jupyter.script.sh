@@ -41,7 +41,29 @@ BASE_URL="${MY_JUP_BASEURL:-/}"
 PASSWORD="${MY_JUP_PASSWD}"
 
 
-# --- 2. GENERATE RUNTIME CONFIGURATION FILE ---
+# --- 2. FRONTEND CONFIG: disable Lab extensions via page_config.json ---
+# FIX: Separated the variable definition from the mkdir command
+LABCONFIG_DIR="${HOME}/.jupyter/labconfig"
+mkdir -p "${LABCONFIG_DIR}"
+
+# We use quoted 'EOF' to prevent any accidental shell expansion in the JSON
+cat > "${LABCONFIG_DIR}/page_config.json" <<'EOF'
+{
+  "disabledExtensions": {
+    "@jupyterlab/extensionmanager-extension": true, 
+    "@jupyterlab/git": true,
+    "@jupyterlab/github": true,
+    "@jupyterlab/google-drive": true,
+    "dask-labextension": true,
+    "jupyter-leaflet": true,
+    "jupyterlab-code-formatter": true,
+    "nbdime-jupyterlab": true
+  }
+}
+EOF
+
+
+# --- 3. GENERATE RUNTIME CONFIGURATION FILE ---
 # MOVING AWAY FROM: Passing raw CLI flags (e.g., --ip, --port) which may be prone 
 #                  to shell-escaping errors and cause "Missing Extension" popups.
 #
@@ -93,7 +115,7 @@ c.LabConfig.disabled_extensions = [
 EOF
 
 
-# --- 3. LAUNCH JUPYTER ---
+# --- 4. LAUNCH JUPYTER ---
 # MOVING AWAY FROM: 'jupyter lab [flags]'
 # MOVING TOWARD:   'exec jupyter lab --config' 
 # Using 'exec' ensures the container catches Slurm/OOD termination signals 
