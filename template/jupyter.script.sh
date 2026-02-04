@@ -82,7 +82,7 @@ c.ServerApp.jpserver_extensions = {
 
 # B. FRONTEND: Stop the Browser from requesting these icons (Fixes rendering lag)
 # By matching this list with the backend above, we prevent "Extension Missing" popups.
-c.LabApp.disabled_extensions = [
+c.LabConfig.disabled_extensions = [
     '@jupyterlab/extensionmanager-extension', # Goal to prevents CPU spike on startup
     '@jupyterlab/git',                        # Removes sidebar Git icon, git can be handled via terminal
     '@jupyterlab/github',                     # Removes sidebar GitHub icon, git can be handled via terminal
