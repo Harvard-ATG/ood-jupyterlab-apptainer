@@ -3,20 +3,17 @@
 # Run pyppeteer install to fix issue with exporting to pdf
 # pyppeteer-install
 
+# This scriptp was refined with the help of Gemini 3 Pro and Claude 4.5 Sonnet AI Models
+
 # -------------------------------------------------------------------------
-# OPTIONAL: DISABLE HEAVY EXTENSIONS [DEACTIVATED]
+# OPTIONAL: DISABLE HEAVY EXTENSIONS (LEGACY CLI METHOD – NOW REPLACED)
 # -------------------------------------------------------------------------
-# CONTEXT:
-# The Jupyter Extension Manager attempts to fetch updates from the internet 
-# every time the notebook starts. This consumes significant CPU cycles (100% core usage)
-# for 2-4 seconds during startup.
-#
-# HOW TO ENABLE:
-# Uncomment the line below. This is recommended if running on small nodes 
-# (e.g., 1-2 CPUs) to prevent startup crashes or sluggishness.
+# The old approach used CLI flags (DISABLE_FLAGS) to disable extensions.
+# We now prefer config files (page_config.json + jupyter_server_config.py)
+# to control both frontend and backend extensions.
 # -------------------------------------------------------------------------
 # DISABLE_FLAGS=""
-# # DISABLE_FLAGS="--LabApp.disabled_extensions='@jupyterlab/extensionmanager-extension'"
+# DISABLE_FLAGS="--LabApp.disabled_extensions='@jupyterlab/extensionmanager-extension'"
 
 # jupyter lab \
 #            --ip='0.0.0.0' \
@@ -29,38 +26,29 @@
 #            --ServerApp.disable_check_xsrf=True \
 #            --WebPDFExporter.disable_sandbox=True
 
-
 # -------------------------------------------------------------------------
-# OPTIMIZED LAUNCH SCRIPT WITH SCRATCH/LUSTRE REDIRECTION
+# OPTIMIZED LAUNCH SCRIPT USING GENERATED CONFIG
 # -------------------------------------------------------------------------
-# Optimized for Luster and High-Concurrency I/O Classes.
 
-# --- 1. SET UP PARAMETERS ---
+# Basic server parameters from the OOD/apptainer environment
 PORT="${MY_JUP_PORT:-8888}"
 BASE_URL="${MY_JUP_BASEURL:-/}"
 PASSWORD="${MY_JUP_PASSWD}"
 
-
-# --- 2. FRONTEND CONFIG: disable Lab extensions via page_config.json ---
-
-
-
-# --- 3. GENERATE RUNTIME CONFIGURATION FILE ---
-# MOVING AWAY FROM: Passing raw CLI flags (e.g., --ip, --port) which may be prone 
-#                  to shell-escaping errors and cause "Missing Extension" popups.
+# -------------------------------------------------------------------------
+# 1. FRONTEND: disable heavy JupyterLab extensions via page_config.json
 #
-# MOVING TOWARD:   A generated Python config file to 
-#                  simultaneously disable Backend and Frontend components to 
-#                  fix UI sluggishness and icon "lag."
-# -----------------------------------------------------------------------------
-# Creat e Jupyter Lab frontend config directory if it doesn't exist
+# This controls the browser-side extensions (sidebars, icons, menus).
+# Disabling high-I/O / external service integrations here reduces the
+# number of small asset loads and API calls during startup.
+# -------------------------------------------------------------------------
 LABCONFIG_DIR="${HOME}/.jupyter/labconfig"
 mkdir -p "${LABCONFIG_DIR}"
 
 cat > "${LABCONFIG_DIR}/page_config.json" <<'EOF'
 {
   "disabledExtensions": {
-    "@jupyterlab/extensionmanager-extension": true, 
+    "@jupyterlab/extensionmanager-extension": true,
     "@jupyterlab/git": true,
     "@jupyterlab/github": true,
     "@jupyterlab/google-drive": true,
@@ -72,7 +60,13 @@ cat > "${LABCONFIG_DIR}/page_config.json" <<'EOF'
 }
 EOF
 
-# Create a temporary Jupyter config file for the server settings
+# -------------------------------------------------------------------------
+# 2. BACKEND: generate a temporary jupyter_server_config.py
+#
+# This replaces long CLI flag lists with a single config file that:
+# - Sets the usual ServerApp network/security options.
+# - Disables selected jpserver extensions that do heavy polling or I/O.
+# -------------------------------------------------------------------------
 CONF_FILE="${PWD}/jupyter_server_config.py"
 
 cat <<EOF > "${CONF_FILE}"
@@ -89,28 +83,23 @@ c.ServerApp.disable_check_xsrf = True
 c.ServerApp.open_browser = False
 c.WebPDFExporter.disable_sandbox = True
 
-# --- UI & PERFORMANCE OPTIMIZATION (THE "ICON & POPUP" FIX) ---
-# MOVING AWAY FROM: Default loading of all sidebar extensions.
-# MOVING TOWARD:   Explicitly disabling high-I/O extensions. This prevents the 
-#                  browser from "searching" for icons and status updates on 
-#                  slow storage, which fixes the "Sluggish Icon" effect.
-
-# A. BACKEND: Stop the Python server from loading these plugins (Saves RAM/CPU)
+# --- UI & PERFORMANCE OPTIMIZATIONS ---
+# Disable backend extensions that cause extra polling or metadata scans.
 c.ServerApp.jpserver_extensions = {
-    'dask_labextension': False,             # Constantly polls cluster status
-    'jupyter_server_xarray_leaflet': False, # Heavy GIS metadata calls
-    'jupyterlab_git': False,                # Crawls file tree for .git folders
-    'nbgitpuller': False,                   # External sync service
-    'panel.io.jupyter_server_extension': False # Dask-related, heavy JS load
+    'dask_labextension': False,
+    'jupyter_server_xarray_leaflet': False,
+    'jupyterlab_git': False,
+    'nbgitpuller': False,
+    'panel.io.jupyter_server_extension': False
 }
 EOF
 
-
-# --- 4. LAUNCH JUPYTER ---
-# MOVING AWAY FROM: 'jupyter lab [flags]'
-# MOVING TOWARD:   'exec jupyter lab --config' 
-# Using 'exec' ensures the container catches Slurm/OOD termination signals 
-# immediately, leading to cleaner job exits and faster resource release.
-# -----------------------------------------------------------------------------
-echo "INFO: Launching Jupyter with config file: ${CONF_FILE}"
+# -------------------------------------------------------------------------
+# 3. LAUNCH JUPYTERLAB USING THE CONFIG FILE
+#
+# Using 'exec' ensures the Jupyter process becomes PID 1 in the container
+# so Slurm/OOD signals (TERM, INT) are delivered cleanly and jobs exit
+# promptly when cancelled.
+# -------------------------------------------------------------------------
+echo "INFO: Launching JupyterLab with config file: ${CONF_FILE}"
 exec jupyter lab --config "${CONF_FILE}"
