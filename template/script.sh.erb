@@ -78,7 +78,7 @@ log "Using Persistent Workdir: ${WORKDIR_USER}"
 # -------------------------------------------------------------------------
 # We use WORKDIR_USER for Workspace/Runtime so tabs persist between sessions.
 export APPTAINERENV_JUPYTERLAB_WORKSPACES_DIR="${WORKDIR_USER}/workspaces"
-# export APPTAINERENV_JUPYTER_RUNTIME_DIR="${WORKDIR_USER}/runtime"
+export APPTAINERENV_JUPYTER_RUNTIME_DIR="${WORKDIR_USER}/runtime"
 # For pip and general cache
 export APPTAINERENV_XDG_CACHE_HOME="${WORKDIR_USER}/cache"
 
