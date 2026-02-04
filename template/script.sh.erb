@@ -100,11 +100,6 @@ export APPTAINERENV_APPEND_PATH="/opt/slurm/bin"
 # enable this only if needed for debug purpose. note that the password will appear in the output 
 # set -x
 
-# # Pass connection info to container launch script
-# export APPTAINERENV_MY_JUP_PORT="${port}"
-# export APPTAINERENV_MY_JUP_PASSWD="${password}"
-# export APPTAINERENV_MY_JUP_BASEURL="${base_url}"
-
 ## bind parts of the filesystem to be able to talk to slurm from within the container
 export SING_BINDS=""
 export SING_BINDS="$SING_BINDS -B /shared"
