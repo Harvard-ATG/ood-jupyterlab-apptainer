@@ -89,7 +89,9 @@ c.LabApp.disabled_extensions = [
     '@jupyterlab/google-drive',                # Removes sidebar Drive icon, prevents heavy Google API calls
     'dask-labextension',                      # Removes sidebar Dask icon, Dask can still be used via terminal or code
     'jupyter-leaflet'                         # Prevents heavy GIS JS load, static maps can still be used in notebooks
+]
 EOF
+
 
 # --- 3. LAUNCH JUPYTER ---
 # MOVING AWAY FROM: 'jupyter lab [flags]'
