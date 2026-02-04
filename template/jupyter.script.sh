@@ -116,40 +116,41 @@ CONF_FILE="${PWD}/jupyter_server_config.py"
 cat <<EOF > "${CONF_FILE}"
 c = get_config()
 
-# --- NETWORK & SECURITY (Universal Auth) ---
+# --- NETWORK & SECURITY ---
 c.ServerApp.ip = '0.0.0.0'
 c.ServerApp.port = ${PORT}
+c.ServerApp.port_retries = 0
 c.ServerApp.base_url = '${BASE_URL}'
+c.ServerApp.PasswordIdentityProvider.hashed_password = '${PASSWORD}'
 c.ServerApp.allow_origin = '*'
 c.ServerApp.disable_check_xsrf = True
 c.ServerApp.open_browser = False
+c.WebPDFExporter.disable_sandbox = True
 
-# Fallback authentication for older notebook shims
-c.NotebookApp.password = '${PASSWORD}' 
-c.ServerApp.password = '${PASSWORD}'
-c.ServerApp.PasswordIdentityProvider.hashed_password = '${PASSWORD}'
+# --- UI & PERFORMANCE OPTIMIZATION (Jupyter Server 2.x Syntax) ---
 
-# --- UI & PERFORMANCE OPTIMIZATION ---
+# A. BACKEND: Explicitly disable server-side extensions
+# We use the full extension name as seen in your logs
+c.ServerApp.jpserver_extensions = {
+    'jupyterlab_git': False,
+    'nbgitpuller': False,
+    'dask_labextension': False,
+    'jupyter_server_xarray_leaflet': False,
+    'panel.io.jupyter_server_extension': False
+}
 
-# A. BACKEND: Disable via the extension manager directly
-c.ExtensionApp.blocked_extensions = [
-    'jupyterlab_git',
-    'dask_labextension',
-    'nbgitpuller',
-    'jupyter_server_xarray_leaflet',
-    'panel.io.jupyter_server_extension'
-]
-
-# B. FRONTEND: Disable UI components
-# Using both LabConfig and LabApp to cover all version bases
-c.LabConfig.disabled_extensions = [
-    '@jupyterlab/extensionmanager-extension',
+# B. FRONTEND: Block the icons and UI components from loading
+# In Server 2.x, LabApp settings are often shimmed through LabServerApp
+c.LabServerApp.blocked_extensions = [
     '@jupyterlab/git',
     '@jupyterlab/github',
-    'dask-labextension'
+    'dask-labextension',
+    'jupyterlab-code-formatter',
+    'jupyter-leaflet'
 ]
-c.LabApp.disabled_extensions = c.LabConfig.disabled_extensions
 
+# Disable the extension manager to stop the startup CPU spike
+c.LabApp.manager_config = {'allowed_extensions': []}
 EOF
 
 echo "INFO: Launching Jupyter with config file: ${CONF_FILE}"
