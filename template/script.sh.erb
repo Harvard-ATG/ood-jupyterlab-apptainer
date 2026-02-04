@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 
 this_script="template/script.sh.erb"
 
@@ -6,102 +6,208 @@ log() {
     echo -e "[$(date -Iseconds)][${this_script}] $1"
 }
 
-# Benchmark info
+# ---------------------------------------------------------------------------
+# Main entry
+# This script was refined with the help of Gemini 3 Pro and Claude 4.5 Sonnet AI Models
+# ---------------------------------------------------------------------------
+
 log "Starting main script"
 
-# Set working directory to home directory
+# Always start in the user's home directory
 cd "${HOME}"
 
-# Define Image Path 
-# Only pangeo-notebook.sif has been migrated to Lustre (/scratch). 
-# All other images should default to the EFS (/shared) location for safety.
+# ---------------------------------------------------------------------------
+# Container image selection
+#
+# - IMAGE_FILE is provided by the OOD app context (ERB: <%= context.imagefile %>).
+# - pangeo-notebook.sif is stored on Lustre (/scratch) to benefit from
+#   fast, parallel I/O.
+# - All other images default to EFS (/shared) for safety and consistency.
+# ---------------------------------------------------------------------------
 
-# The image selected passed in via the context variable 'imagefile'
 IMAGE_FILE="<%= context.imagefile %>"
 
-if [[ "$IMAGE_FILE" == "pangeo-notebook.sif" ]]; then
+if [[ "${IMAGE_FILE}" == "pangeo-notebook.sif" ]]; then
     # FAST PATH (Lustre)
     log "Image is Pangeo Notebook, using Lustre path for container image."
-    export container_folder=/scratch/apptainerImages/
+    export container_folder="/scratch/apptainerImages"
 else
     # STANDARD PATH (EFS)
     log "Image is ${IMAGE_FILE}, using standard EFS path for container image."
-    export container_folder=/shared/apptainerImages
+    export container_folder="/shared/apptainerImages"
 fi
 
+# When testing new images locally, you can instead drop them under $HOME:
+# export container_folder="${HOME}/Programs/containers"
 
-# Set up location of apptainer image
-## when you test new installs you probaby want to drop the images locally in your home folder
-#export container_folder=$HOME/Programs/containers
-export container_image=$container_folder/$IMAGE_FILE
+export container_image="${container_folder}/${IMAGE_FILE}"
 
-# Set additional variables
-JUPYTER_TMPDIR=${TMPDIR:-/tmp}/$(id -un)-jupyter/
-## job specific tmp in case there are conflicts with different users running on the same node
-WORKDIR=/scratch/${USER}/${SLURM_JOB_ID}
-mkdir -m 700 -p ${WORKDIR}/tmp
+# ---------------------------------------------------------------------------
+# Container image validation and fallback
+#
+# Scratch (/scratch) is ephemeral storage. Files may be removed by:
+# - Automated cluster purge policies (e.g., age-based cleanup).
+# - Manual maintenance operations.
+# - Storage capacity management.
+#
+# To ensure job reliability, we validate that the image exists at the
+# expected path. If pangeo-notebook.sif is missing from scratch, we
+# automatically fall back to the EFS copy.
+#
+# This allows jobs to continue working even if scratch is cleaned between
+# image sync cycles, at the cost of slower I/O during container startup.
+# ---------------------------------------------------------------------------
 
-# OPTIONAL: Set Up Scratch/Lustre Working Directory for Jupyter Cache, and Runtime"
-# -------------------------------------------------------------------------
-# mkdir -m 700 -p "${WORKDIR}"/{runtime,cache}
+if [[ ! -f "${container_image}" ]]; then
+    log "WARNING: Image not found at ${container_image}"
+    
+    # If we were trying scratch, fall back to EFS
+    if [[ "${container_folder}" == "/scratch/apptainerImages" ]]; then
+        log "Attempting fallback to EFS for ${IMAGE_FILE}"
+        export container_folder="/shared/apptainerImages"
+        export container_image="${container_folder}/${IMAGE_FILE}"
+        
+        if [[ -f "${container_image}" ]]; then
+            log "SUCCESS: Found image at fallback location ${container_image}"
+        else
+            log "ERROR: Image ${IMAGE_FILE} not found on scratch or EFS."
+            log "ERROR: Expected locations:"
+            log "ERROR:   - /scratch/apptainerImages/${IMAGE_FILE}"
+            log "ERROR:   - /shared/apptainerImages/${IMAGE_FILE}"
+            exit 1
+        fi
+    else
+        # We were already using EFS and it's still not there
+        log "ERROR: Image ${IMAGE_FILE} not found at ${container_image}"
+        log "ERROR: Verify the image exists and is readable."
+        exit 1
+    fi
+fi
 
-# OPTIONAL: REDIRECT JUPYTER CACHE, RUNTIME, and TMP to Scratch/Lustre
-# This prevents heavy I/O on EFS home directories.
-# Jupyter writes frequent "heartbeat" files, sockets, and logs. By default, 
-# these go to the user's Home directory (EFS). 
-# If a large class (50+ students) launches simultaneously, thousands of tiny 
-# writes can hit the EFS IOPS limit, causing the storage to "freeze" for everyone.
-# TO ENABLE: Uncomment the block below to force these temporary files onto Lustre.
-# This isolates the I/O load and protects the Home directory.
-# -------------------------------------------------------------------------
-# export APPTAINERENV_JUPYTER_RUNTIME_DIR="${WORKDIR}/runtime"
-# export APPTAINERENV_XDG_CACHE_HOME="${WORKDIR}/cache"
-# export APPTAINERENV_TMPDIR="${WORKDIR}/tmp"
+log "Using container image: ${container_image}"
 
+# ---------------------------------------------------------------------------
+# Scratch layout for JupyterLab runtime, caches, and /tmp
+#
+# Goals:
+# - Move high-frequency small writes (runtime, caches, icons, workspaces)
+#   off of EFS ($HOME) and onto Lustre (/scratch) to avoid EFS IOPS saturation
+#   during large, concurrent launches (e.g., entire classes).
+# - Use a per-job /tmp to avoid conflicts between jobs/users on the same node.
+# - Use a per-user persistent area for JupyterLab state so that UI assets
+#   and workspaces persist across jobs and can be quickly reused.
+#
+# Notes on Apptainer:
+# - Env vars prefixed with APPTAINERENV_ are passed into the container with
+#   the prefix stripped. For example:
+#     APPTAINERENV_JUPYTER_RUNTIME_DIR  -> JUPYTER_RUNTIME_DIR (inside)
+# ---------------------------------------------------------------------------
 
+# Per-job scratch directory: tied to a single Slurm job, safe to discard
+# when the job ends. Used for /tmp inside the container.
+WORKDIR_JOB="/scratch/${USER}/${SLURM_JOB_ID}"
 
-# Create environment variables to pass to singularity container
-# See https://apptainer.org/docs/user/latest/appendix.html#e for info
-## for conda
-export APPTAINERENV_CONDA_PKGS_DIRS=${HOME}/.conda/pkgs
-## for pip
-export APPTAINERENV_XDG_CACHE_HOME=${JUPYTER_TMPDIR}/xdg_cache_home
-## for specific package mne
-export APPTAINERENV_NUMBA_CACHE_DIR=$HOME/.cache
-## Add slurm executables to PATH
+# Per-user persistent scratch directory for Jupyter state that should
+# survive across jobs (runtime, caches, workspaces).
+WORKDIR_USER="/scratch/${USER}/jupyter_persistent_state"
+
+# Create job-specific /tmp and persistent Jupyter state dirs
+mkdir -m 700 -p "${WORKDIR_JOB}/tmp"
+mkdir -m 700 -p "${WORKDIR_USER}"/{runtime,cache,workspaces}
+
+log "Using job workdir: ${WORKDIR_JOB}"
+log "Using persistent workdir: ${WORKDIR_USER}"
+
+# JupyterLab workspaces: tab/layout metadata. Keeping this persistent lets
+# users reconnect to familiar layouts quickly.
+export APPTAINERENV_JUPYTERLAB_WORKSPACES_DIR="${WORKDIR_USER}/workspaces"
+
+# Jupyter runtime files: heartbeats, sockets, and logs. These are very
+# chatty; moving them to Lustre avoids hammering EFS.
+export APPTAINERENV_JUPYTER_RUNTIME_DIR="${WORKDIR_USER}/runtime"
+
+# General caches (e.g., pip, Jupyter caches) use XDG_CACHE_HOME.
+export APPTAINERENV_XDG_CACHE_HOME="${WORKDIR_USER}/cache"
+
+# numba cache: compiled kernels – can be large and frequently updated.
+export APPTAINERENV_NUMBA_CACHE_DIR="${WORKDIR_USER}/cache/numba"
+
+# Inside the container, TMPDIR will point at the job-specific scratch /tmp.
+# This isolates temporary files per job and ties cleanup to job lifetime.
+export APPTAINERENV_TMPDIR="${WORKDIR_JOB}/tmp"
+
+# If we ever need to revert to a home-based tmp/cache model, the
+# legacy pattern (kept here for reference) was:
+#   JUPYTER_TMPDIR=${TMPDIR:-/tmp}/$(id -un)-jupyter/
+#   APPTAINERENV_XDG_CACHE_HOME="${JUPYTER_TMPDIR}/xdg_cache_home"
+
+# ---------------------------------------------------------------------------
+# Additional environment passed into the Apptainer container
+# ---------------------------------------------------------------------------
+
+# Conda package cache stays in $HOME; less write-churn than Jupyter runtime.
+export APPTAINERENV_CONDA_PKGS_DIRS="${HOME}/.conda/pkgs"
+
+# Add Slurm executables to PATH inside the container.
 export APPTAINERENV_APPEND_PATH="/opt/slurm/bin"
 
-# enable this only if needed for debug purpose. note that the password will appear in the output 
+# Enable this only if needed for debug purposes.
+# Note: the password may appear in output if used interactively.
 # set -x
 
-## bind parts of the filesystem to be able to talk to slurm from within the container
+# ---------------------------------------------------------------------------
+# Filesystem bindings for Apptainer
+#
+# SING_BINDS is expanded into a sequence of `-B` flags for apptainer exec.
+# We bind:
+# - /shared  : EFS (homes, shared data, non-Pangeo images)
+# - /scratch : Lustre scratch (images, Jupyter state, tmp)
+# - WORKDIR_JOB/tmp -> /tmp inside the container (per-job tmp)
+#
+# Additional Slurm/SSSD bindings are kept commented together below for easy
+# re-enable if needed for debugging or enhanced integration.
+# ---------------------------------------------------------------------------
+
 export SING_BINDS=""
-export SING_BINDS="$SING_BINDS -B /shared"
-export SING_BINDS="$SING_BINDS -B /scratch"
-# export SING_BINDS="$SING_BINDS -B /etc/nsswitch.conf"
-# export SING_BINDS="$SING_BINDS -B /etc/sssd/"
-# export SING_BINDS="$SING_BINDS -B /var/lib/sss"
-# export SING_BINDS="$SING_BINDS -B /opt/slurm"
-# export SING_BINDS="$SING_BINDS -B /slurm" # location does not exist, unsure of purpose
-# export SING_BINDS="$SING_BINDS -B /var/run/munge"
-# export SING_BINDS="$SING_BINDS -B `which sbatch `"
-# export SING_BINDS="$SING_BINDS -B `which srun `"
-# export SING_BINDS="$SING_BINDS -B `which sacct `"
-# export SING_BINDS="$SING_BINDS -B `which scontrol `"
-# export SING_BINDS="$SING_BINDS -B `which salloc `"
-# export SING_BINDS="$SING_BINDS -B /usr/lib64/slurm/ " # location does not exist, unsure of purpose
-# export SING_BINDS="$SING_BINDS -B /usr/lib64/libreadline.so.6" # missing file, causing issues with scontrol
-export SING_BINDS="$SING_BINDS -B ${WORKDIR}/tmp:/tmp " ## job specific tmp dir
+export SING_BINDS="${SING_BINDS} -B /shared"
+export SING_BINDS="${SING_BINDS} -B /scratch"
+
+# Optional system/Slurm bindings (kept for reference):
+# export SING_BINDS="${SING_BINDS} -B /etc/nsswitch.conf"
+# export SING_BINDS="${SING_BINDS} -B /etc/sssd/"
+# export SING_BINDS="${SING_BINDS} -B /var/lib/sss"
+# export SING_BINDS="${SING_BINDS} -B /opt/slurm"
+# export SING_BINDS="${SING_BINDS} -B /slurm"                # path does not exist
+# export SING_BINDS="${SING_BINDS} -B /var/run/munge"
+# export SING_BINDS="${SING_BINDS} -B $(which sbatch)"
+# export SING_BINDS="${SING_BINDS} -B $(which srun)"
+# export SING_BINDS="${SING_BINDS} -B $(which sacct)"
+# export SING_BINDS="${SING_BINDS} -B $(which scontrol)"
+# export SING_BINDS="${SING_BINDS} -B $(which salloc)"
+# export SING_BINDS="${SING_BINDS} -B /usr/lib64/slurm/"     # path may not exist
+# export SING_BINDS="${SING_BINDS} -B /usr/lib64/libreadline.so.6" # missing on some nodes
+
+# Bind the job-specific scratch tmp as /tmp inside the container.
+export SING_BINDS="${SING_BINDS} -B ${WORKDIR_JOB}/tmp:/tmp"
+
 log "SING_BINDS=${SING_BINDS}"
 
+# JOBROOT is set by the OOD app; it points at the app's job directory
+# containing jupyter.script.sh and related helper scripts.
 log "JOBROOT=${JOBROOT}"
+
+# ---------------------------------------------------------------------------
+# Load Apptainer via Spack and launch Jupyter
+# ---------------------------------------------------------------------------
 
 log "Starting to load Spack environment"
 
-# Load apptainer from spack before running image
+# Load apptainer from Spack before running the container image
 . /shared/spack/share/spack/setup-env.sh
 spack env activate apptainer
 
 log "Starting Jupyter"
 
-apptainer exec $SING_BINDS $container_image $JOBROOT/jupyter.script.sh
+# apptainer exec will see the environment above (APPTAINERENV_*) and
+# the bind mounts specified in SING_BINDS.
+apptainer exec ${SING_BINDS} "${container_image}" "${JOBROOT}/jupyter.script.sh"
