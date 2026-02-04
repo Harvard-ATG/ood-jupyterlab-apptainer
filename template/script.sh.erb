@@ -35,44 +35,75 @@ fi
 #export container_folder=$HOME/Programs/containers
 export container_image=$container_folder/$IMAGE_FILE
 
-# Set additional variables
-JUPYTER_TMPDIR=${TMPDIR:-/tmp}/$(id -un)-jupyter/
-## job specific tmp in case there are conflicts with different users running on the same node
-WORKDIR=/scratch/${USER}/${SLURM_JOB_ID}
-mkdir -m 700 -p ${WORKDIR}/tmp
 
-# OPTIONAL: Set Up Scratch/Lustre Working Directory for Jupyter Cache, and Runtime"
+# # Set additional variables
+# Removed: # JUPYTER_TMPDIR=${TMPDIR:-/tmp}/$(id -un)-jupyter/
+# in favor of WORKDIR_USER and WORKDIR_JOB below
+# Replaced by scratch with working directory user
+# New implmentation:
+# 1. Redirects all caches to single high-speed, parallel I/O lustre path that persists across jobs with 1 variable.
+# 2. Moves tmp to job-specific scratch that is cleaned up after job ends to avoid conflicts.
+# 3. Users persistent workspace and runtime dirs to preserve session state across jobs, allowing browser to cache icons and UI state to load faster
+# subsequent loggings. 
+
+
+# --- STORAGE STRATEGY ---
+# WORKDIR_JOB: (Previously WORKDIR) Deleted after the job ends (good for /tmp). Used here to minimize
+# conflicts between multiple users on the same node and IOPS on shared /tmp.
+# WORKDIR_USER: Persistent across jobs (good for /scratch/$USER).
+## job specific tmp in case there are conflicts with different users running on the same node
+WORKDIR_JOB=/scratch/${USER}/${SLURM_JOB_ID}
+WORKDIR_USER="/scratch/${USER}/jupyter_persistent_state"
+
+
+# OPTIONAL: For performance improvements, set Up Scratch/Lustre Working Directory for Jupyter Cache, and Runtime"
 # -------------------------------------------------------------------------
-# mkdir -m 700 -p "${WORKDIR}"/{runtime,cache}
+# Create Scratch/Lustre Working Directories for Jupyter Cache, Runtime, and Tmp
+mkdir -m 700 -p "${WORKDIR_JOB}/tmp"
+mkdir -m 700 -p "${WORKDIR_USER}/"{runtime,cache,workspaces}
+
+log "Using Job Workdir: ${WORKDIR_JOB}"
+log "Using Persistent Workdir: ${WORKDIR_USER}"
 
 # OPTIONAL: REDIRECT JUPYTER CACHE, RUNTIME, and TMP to Scratch/Lustre
 # This prevents heavy I/O on EFS home directories.
-# Jupyter writes frequent "heartbeat" files, sockets, and logs. By default, 
-# these go to the user's Home directory (EFS). 
+# Jupyter makes high-frequency meta wirtes ("heartbeat" files, sockets, and logs). 
+# By default, these go to the user's Home directory (EFS).
 # If a large class (50+ students) launches simultaneously, thousands of tiny 
 # writes can hit the EFS IOPS limit, causing the storage to "freeze" for everyone.
 # TO ENABLE: Uncomment the block below to force these temporary files onto Lustre.
 # This isolates the I/O load and protects the Home directory.
+# These move high-frequency metadata writes to Lustre.
+# We use WORKDIR_USER for Workspace/Runtime so tabs persist between sessions.
 # -------------------------------------------------------------------------
-# export APPTAINERENV_JUPYTER_RUNTIME_DIR="${WORKDIR}/runtime"
-# export APPTAINERENV_XDG_CACHE_HOME="${WORKDIR}/cache"
-# export APPTAINERENV_TMPDIR="${WORKDIR}/tmp"
+# We use WORKDIR_USER for Workspace/Runtime so tabs persist between sessions.
+export APPTAINERENV_JUPYTERLAB_WORKSPACES_DIR="${WORKDIR_USER}/workspaces"
+export APPTAINERENV_JUPYTER_RUNTIME_DIR="${WORKDIR_USER}/runtime"
+# For pip and general cache
+export APPTAINERENV_XDG_CACHE_HOME="${WORKDIR_USER}/cache"
 
+# Use the Job-specific scratch for TMP to ensure clean cleanup after job ends
+export APPTAINERENV_TMPDIR="/tmp"
 
 
 # Create environment variables to pass to singularity container
 # See https://apptainer.org/docs/user/latest/appendix.html#e for info
 ## for conda
 export APPTAINERENV_CONDA_PKGS_DIRS=${HOME}/.conda/pkgs
-## for pip
-export APPTAINERENV_XDG_CACHE_HOME=${JUPYTER_TMPDIR}/xdg_cache_home
+## for pip (hanlded above.)
+# export APPTAINERENV_XDG_CACHE_HOME=${JUPYTER_TMPDIR}/xdg_cache_home
 ## for specific package mne
-export APPTAINERENV_NUMBA_CACHE_DIR=$HOME/.cache
+export APPTAINERENV_NUMBA_CACHE_DIR="${WORKDIR_USER}/cache/numba"
 ## Add slurm executables to PATH
 export APPTAINERENV_APPEND_PATH="/opt/slurm/bin"
 
 # enable this only if needed for debug purpose. note that the password will appear in the output 
 # set -x
+
+# Pass connection info to container launch script
+export APPTAINERENV_MY_JUP_PORT="${port}"
+export APPTAINERENV_MY_JUP_PASSWD="${password}"
+export APPTAINERENV_MY_JUP_BASEURL="${base_url}"
 
 ## bind parts of the filesystem to be able to talk to slurm from within the container
 export SING_BINDS=""
