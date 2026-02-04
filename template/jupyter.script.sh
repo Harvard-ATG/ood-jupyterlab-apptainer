@@ -3,7 +3,7 @@
 # Run pyppeteer install to fix issue with exporting to pdf
 # pyppeteer-install
 
-# This scriptp was refined with the help of Gemini 3 Pro and Claude 4.5 Sonnet AI Models
+# This script was refined with the help of Gemini 3 Pro and Claude 4.5 Sonnet AI Models
 
 # -------------------------------------------------------------------------
 # OPTIONAL: DISABLE HEAVY EXTENSIONS (LEGACY CLI METHOD – NOW REPLACED)
