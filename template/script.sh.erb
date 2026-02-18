@@ -134,6 +134,9 @@ log "Using persistent workdir: ${WORKDIR_USER}"
 
 # ----------------------------------------------------------------------------
 # Jupyterlab emphemeral system configs:
+# Create the temporary config files that will be bind-mounted into the container. These
+mkdir -p "${WORKDIR_JOB}/config"
+
 # Write these to the ephemeral job storage, then bind them into the image.
 HOST_PAGE_CONFIG="${WORKDIR_JOB}/config/page_config.json"
 HOST_SERVER_CONFIG="${WORKDIR_JOB}/config/jupyter_server_config.py"
@@ -239,9 +242,27 @@ export SING_BINDS="${SING_BINDS} -B ${WORKDIR_JOB}/tmp:/tmp"
 
 # Inject our configs directly into Jupyter's system path inside the container.
 # This ensures they take precedence over any user configs and that we have a clean slate for our new scratch-based setup.
-export SING_BINDS="$SING_BINDS -B ${HOST_PAGE_CONFIG}:/etc/jupyter/labconfig/page_config.json"
-export SING_BINDS="$SING_BINDS -B ${HOST_SERVER_CONFIG}:/etc/jupyter/jupyter_server_config.py"
+# We will bind here after rebuilding the image with the new config paths, but keeping these here for reference:
+# export SING_BINDS="$SING_BINDS -B ${HOST_PAGE_CONFIG}:/etc/jupyter/labconfig/page_config.json"
+# export SING_BINDS="$SING_BINDS -B ${HOST_SERVER_CONFIG}:/etc/jupyter/jupyter_server_config.py"
 
+# ----------------------------------------------------------------------------
+# Bind ephemeral Jupyter configs to /srv/conda/envs/notebook/etc/jupyter/
+#
+# Precedence order: ~/.jupyter (cleaned above) → /srv/conda/.../etc/jupyter ← (we bind here) → /etc/jupyter
+#
+# WHY NOT /etc/jupyter/:
+# - /srv/conda/.../etc/jupyter/ ALREADY HAS CONFIGS enabling extensions (dask, git, etc.)
+# - Jupyter checks /srv/conda path BEFORE /etc/jupyter in search order
+# - Binding to /etc/jupyter would be IGNORED - the /srv/conda configs would win
+# - Bind to /srv/conda path to override the existing extension-enabling configs there
+#
+# CURRENT STATE: Users' ~/.jupyter configs override /srv/conda (causing performance issues)
+# AFTER THIS PR: Home cleaned → our disabled-extension configs in /srv/conda take effect
+# Future: Rebuild image with optimized configs baked into /srv/conda path directly
+# ----------------------------------------------------------------------------
+export SING_BINDS="$SING_BINDS -B ${HOST_PAGE_CONFIG}:/srv/conda/envs/notebook/etc/jupyter/labconfig/page_config.json"
+export SING_BINDS="$SING_BINDS -B ${HOST_SERVER_CONFIG}:/srv/conda/envs/notebook/etc/jupyter/jupyter_server_config.py"
 log "SING_BINDS=${SING_BINDS}"
 
 # JOBROOT is set by the OOD app; it points at the app's job directory
