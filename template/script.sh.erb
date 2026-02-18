@@ -22,13 +22,33 @@ cd "${HOME}"
 # because JupyterLab looks for config files in the user's home directory first. Removing them ensures that
 # the container's configs take precedence and that we have a clean slate for our new scratch-based
 # Remove legacy settings so they don't override our new system-level configs
+# ---------------------------------------------------------------------------
+# Cleanup legacy Jupyter configs from home directory
+# These can override system-level configs if left behind from previous implementations
+# ---------------------------------------------------------------------------
+echo "Checking for legacy Jupyter configs..."
+
+# Remove old page_config.json
 LEGACY_PAGE_CONFIG="${HOME}/.jupyter/labconfig/page_config.json"
 if [[ -f "${LEGACY_PAGE_CONFIG}" ]]; then
-    log "INFO: Cleaning up legacy Jupyter config from Home directory..."
+    log "Removing legacy page_config.json from home directory"
     rm -f "${LEGACY_PAGE_CONFIG}"
     rmdir "${HOME}/.jupyter/labconfig" 2>/dev/null || true
 fi
 
+# Remove old jupyter_server_config.py from home directory root
+LEGACY_SERVER_CONFIG="${HOME}/jupyter_server_config.py"
+if [[ -f "${LEGACY_SERVER_CONFIG}" ]]; then
+    log "Removing legacy jupyter_server_config.py from home directory"
+    rm -f "${LEGACY_SERVER_CONFIG}"
+fi
+
+# Remove old jupyter_server_config.py from .jupyter directory
+LEGACY_SERVER_CONFIG_JUPYTER="${HOME}/.jupyter/jupyter_server_config.py"
+if [[ -f "${LEGACY_SERVER_CONFIG_JUPYTER}" ]]; then
+    log "Removing legacy jupyter_server_config.py from .jupyter directory"
+    rm -f "${LEGACY_SERVER_CONFIG_JUPYTER}"
+fi
 
 # ---------------------------------------------------------------------------
 # Container image selection
@@ -139,7 +159,9 @@ mkdir -p "${WORKDIR_JOB}/config"
 
 # Write these to the ephemeral job storage, then bind them into the image.
 HOST_PAGE_CONFIG="${WORKDIR_JOB}/config/page_config.json"
+log "Will write JupyterLab page_config.json to ${HOST_PAGE_CONFIG}"
 HOST_SERVER_CONFIG="${WORKDIR_JOB}/config/jupyter_server_config.py"
+log "Will write jupyter_server_config.py to ${HOST_SERVER_CONFIG}"
 
 cat > "${HOST_PAGE_CONFIG}" <<'EOF'
 {
