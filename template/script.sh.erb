@@ -17,6 +17,40 @@ log "Starting main script"
 cd "${HOME}"
 
 # ---------------------------------------------------------------------------
+# Cleanup Jupyter configs from home directory so they don't conflict with system level configs
+# If these files exist, they can override the system-level JupyterLab configs we set up in the container,
+# because JupyterLab looks for config files in the user's home directory first. Removing them ensures that
+# the container's configs take precedence and that we have a clean slate for our new scratch-based
+# Remove legacy settings so they don't override our new system-level configs
+# ---------------------------------------------------------------------------
+# Cleanup legacy Jupyter configs from home directory
+# These can override system-level configs if left behind from previous implementations
+# ---------------------------------------------------------------------------
+echo "Checking for legacy Jupyter configs..."
+
+# Remove old page_config.json
+LEGACY_PAGE_CONFIG="${HOME}/.jupyter/labconfig/page_config.json"
+if [[ -f "${LEGACY_PAGE_CONFIG}" ]]; then
+    log "Removing legacy page_config.json from home directory"
+    rm -f "${LEGACY_PAGE_CONFIG}"
+    rmdir "${HOME}/.jupyter/labconfig" 2>/dev/null || true
+fi
+
+# Remove old jupyter_server_config.py from home directory root
+LEGACY_SERVER_CONFIG="${HOME}/jupyter_server_config.py"
+if [[ -f "${LEGACY_SERVER_CONFIG}" ]]; then
+    log "Removing legacy jupyter_server_config.py from home directory"
+    rm -f "${LEGACY_SERVER_CONFIG}"
+fi
+
+# Remove old jupyter_server_config.py from .jupyter directory
+LEGACY_SERVER_CONFIG_JUPYTER="${HOME}/.jupyter/jupyter_server_config.py"
+if [[ -f "${LEGACY_SERVER_CONFIG_JUPYTER}" ]]; then
+    log "Removing legacy jupyter_server_config.py from .jupyter directory"
+    rm -f "${LEGACY_SERVER_CONFIG_JUPYTER}"
+fi
+
+# ---------------------------------------------------------------------------
 # Container image selection
 #
 # - IMAGE_FILE is provided by the OOD app context (ERB: <%= context.imagefile %>).
@@ -118,6 +152,46 @@ mkdir -m 700 -p "${WORKDIR_USER}"/{runtime,cache,workspaces}
 log "Using job workdir: ${WORKDIR_JOB}"
 log "Using persistent workdir: ${WORKDIR_USER}"
 
+# ----------------------------------------------------------------------------
+# Jupyterlab emphemeral system configs:
+# Create the temporary config files that will be bind-mounted into the container. These
+mkdir -p "${WORKDIR_JOB}/config"
+
+# Write these to the ephemeral job storage, then bind them into the image.
+HOST_PAGE_CONFIG="${WORKDIR_JOB}/config/page_config.json"
+log "Will write JupyterLab page_config.json to ${HOST_PAGE_CONFIG}"
+HOST_SERVER_CONFIG="${WORKDIR_JOB}/config/jupyter_server_config.py"
+log "Will write jupyter_server_config.py to ${HOST_SERVER_CONFIG}"
+
+cat > "${HOST_PAGE_CONFIG}" <<'EOF'
+{
+  "disabledExtensions": {
+    "@jupyterlab/extensionmanager-extension": true, 
+    "@jupyterlab/git": true,
+    "@jupyterlab/github": true,
+    "@jupyterlab/google-drive": true,
+    "dask-labextension": true,
+    "jupyter-leaflet": true,
+    "jupyterlab-code-formatter": true,
+    "nbdime-jupyterlab": true
+  }
+}
+EOF
+
+cat > "${HOST_SERVER_CONFIG}" <<'EOF'
+c = get_config()
+c.ServerApp.jpserver_extensions = {
+    'dask_labextension': False,
+    'jupyter_server_xarray_leaflet': False,
+    'jupyterlab_git': False,
+    'nbgitpuller': False,
+    'panel.io.jupyter_server_extension': False,
+    'jupyterlab_code_formatter': False,
+    'nbdime': False
+}
+EOF
+# ----
+
 # JupyterLab workspaces: tab/layout metadata. Keeping this persistent lets
 # users reconnect to familiar layouts quickly.
 export APPTAINERENV_JUPYTERLAB_WORKSPACES_DIR="${WORKDIR_USER}/workspaces"
@@ -190,6 +264,29 @@ export SING_BINDS="${SING_BINDS} -B /scratch"
 # Bind the job-specific scratch tmp as /tmp inside the container.
 export SING_BINDS="${SING_BINDS} -B ${WORKDIR_JOB}/tmp:/tmp"
 
+# Inject our configs directly into Jupyter's system path inside the container.
+# This ensures they take precedence over any user configs and that we have a clean slate for our new scratch-based setup.
+# We will bind here after rebuilding the image with the new config paths, but keeping these here for reference:
+# export SING_BINDS="$SING_BINDS -B ${HOST_PAGE_CONFIG}:/etc/jupyter/labconfig/page_config.json"
+# export SING_BINDS="$SING_BINDS -B ${HOST_SERVER_CONFIG}:/etc/jupyter/jupyter_server_config.py"
+
+# ----------------------------------------------------------------------------
+# Bind ephemeral Jupyter configs to /srv/conda/envs/notebook/etc/jupyter/
+#
+# Precedence order: ~/.jupyter (cleaned above) → /srv/conda/.../etc/jupyter ← (we bind here) → /etc/jupyter
+#
+# WHY NOT /etc/jupyter/:
+# - /srv/conda/.../etc/jupyter/ ALREADY HAS CONFIGS enabling extensions (dask, git, etc.)
+# - Jupyter checks /srv/conda path BEFORE /etc/jupyter in search order
+# - Binding to /etc/jupyter would be IGNORED - the /srv/conda configs would win
+# - Bind to /srv/conda path to override the existing extension-enabling configs there
+#
+# CURRENT STATE: Users' ~/.jupyter configs override /srv/conda (causing performance issues)
+# AFTER THIS PR: Home cleaned → our disabled-extension configs in /srv/conda take effect
+# Future: Rebuild image with optimized configs baked into /srv/conda path directly
+# ----------------------------------------------------------------------------
+export SING_BINDS="$SING_BINDS -B ${HOST_PAGE_CONFIG}:/srv/conda/envs/notebook/etc/jupyter/labconfig/page_config.json"
+export SING_BINDS="$SING_BINDS -B ${HOST_SERVER_CONFIG}:/srv/conda/envs/notebook/etc/jupyter/jupyter_server_config.py"
 log "SING_BINDS=${SING_BINDS}"
 
 # JOBROOT is set by the OOD app; it points at the app's job directory
