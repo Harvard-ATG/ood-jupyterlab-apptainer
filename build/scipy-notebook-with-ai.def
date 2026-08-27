@@ -1,0 +1,16 @@
+Bootstrap: docker
+Registry: quay.io
+From: jupyter/scipy-notebook:lab-4.4.5
+
+%post
+# Install server-side notebook packages
+pip3 install \
+    notebook-intelligence>=5.3.1 \
+    jupytext \
+    jupyterlab-git \
+    nbdime \
+    nodejs \
+    nbopen
+
+# Install Claude Code CLI
+npm install -g @anthropic-ai/claude-code
