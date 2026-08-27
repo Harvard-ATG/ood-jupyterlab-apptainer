@@ -307,4 +307,5 @@ log "Starting Jupyter"
 
 # apptainer exec will see the environment above (APPTAINERENV_*) and
 # the bind mounts specified in SING_BINDS.
-apptainer exec ${SING_BINDS} "${container_image}" "${JOBROOT}/jupyter.script.sh"
+log "Passing --home ${HOME} to apptainer exec"
+apptainer exec --home ${HOME} ${SING_BINDS} "${container_image}" "${JOBROOT}/jupyter.script.sh"
