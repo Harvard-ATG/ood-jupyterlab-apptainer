@@ -99,6 +99,15 @@ R_GH_PACKAGES=(
     "manutzn/fredo"
 )
 
+# --- Pin pure-R Deriv 4.2.0 BEFORE the loop --------------------------------------------------
+# The base image ships conda-forge R 4.4.3. Current CRAN Deriv (>= 4.3.0) needs the R 4.5 C API
+# (R_ClosureFormals) and fails to compile on 4.4.3, which cascades through its dependents
+# doBy -> pbkrtest -> car -> AER (all silently dropped from the build). Deriv 4.2.0 is pure R
+# (no compiled C, no 4.5 requirement), so installing it first satisfies the dependency and lets
+# car + AER build. install.packages won't downgrade/upgrade an already-present dep, so the loop
+# below reuses this 4.2.0. See econ2110.md runbook / decisions/0002.
+Rscript -e "install.packages('https://cran.r-project.org/src/contrib/Archive/Deriv/Deriv_4.2.0.tar.gz', repos=NULL, type='source')"
+
 for package in "${R_PACKAGES[@]}"
 do
 Rscript -e "install.packages(\"${package}\", repos=\"https://archive.linux.duke.edu/cran/\")"
