@@ -1,0 +1,119 @@
+# jupyter-econ-shared.def  →  /shared/apptainerImages/jupyter-econ-shared.sif
+#
+# Shared econometrics Jupyter (Python + R kernel) container for FAS courses taught by
+# Gregory Bruich (gab853). Durable, purpose-based name (NOT a course number) so it
+# persists across terms. Mirrors the RStudio econ-shared stack for the Jupyter R kernel.
+# Base: /shared/apptainerImages/datascience-notebook.sif (layered) + apt-get sys deps
+# + econometrics Python + R packages (incl. tinytex).
+#
+# Courses using this image (each points its local/<course>.yml.erb at jupyter-econ-shared.sif):
+#   - ECON 2110 : Econometrics I  — Canvas 171352 (Fall 2026; xlist HKS API 114 / HBSDOC 4170)
+#   - ECON 1123                   — Canvas 159573 (Spring 2026)
+#   - ECON 50                     — Canvas 159572 (Spring 2026)
+#
+# Counterpart: econ-shared.def in ood-rstudio (RStudio side). See ADR 0002 + econ2110.md runbook.
+Bootstrap:localimage
+From: /shared/apptainerImages/datascience-notebook.sif
+
+%post -c /bin/bash
+echo "shell: $0"
+
+apt-get update && apt-get -y install \
+    cmake \
+    libfreetype6-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev
+
+cat << EOF > /tmp/requirements.txt
+arch
+# fixedeffect # Unclear that this is a python package
+fredapi
+linearmodels
+matplotlib
+numpy
+pandas
+rddensity
+scipy
+scikit-learn
+stargazer
+statsmodels
+rdrobust
+binsreg
+seaborn
+lpdensity
+EOF
+
+pip install -r /tmp/requirements.txt
+
+R_PACKAGES=(
+    "AER"
+    "MASS"
+    "binsreg"
+    "boot"
+    "broom"
+    "car"
+    "data.table"
+    "dfadjust"
+    "dplyr"
+    "estimatr"
+    "fixest"
+    "gamlr"
+    "ggplot2"
+    "haven"
+    "ivDiag"
+    "jsonlite"
+    "kableExtra"
+    "lfe"
+    # "lib" # Does not appear to be a package
+    "lmtest"
+    "lpdensity"
+    "lubridate"
+    "maptpx"
+    "margins"
+    "msm"
+    "np"
+    "nprobust"
+    # "oglmx" # Removed from CRAN repository
+    "randomForest"
+    "remotes"
+    "rdrobust"
+    "rpart"
+    "rpart.plot"
+    "rugarch"
+    "ranger"
+    "sampleSelection"
+    "sandwich"
+    "stargazer"
+    "statar"
+    "textir"
+    "tidyverse"
+    "tinytex"
+    "tm"
+    "zoo"
+)
+
+R_GH_PACKAGES=(
+    "OpportunityInsights/oiplot"
+    "grantmcdermott/lfe2fixest"
+    "manutzn/fredo"
+)
+
+# --- Pin pure-R Deriv 4.2.0 BEFORE the loop --------------------------------------------------
+# The base image ships conda-forge R 4.4.3. Current CRAN Deriv (>= 4.3.0) needs the R 4.5 C API
+# (R_ClosureFormals) and fails to compile on 4.4.3, which cascades through its dependents
+# doBy -> pbkrtest -> car -> AER (all silently dropped from the build). Deriv 4.2.0 is pure R
+# (no compiled C, no 4.5 requirement), so installing it first satisfies the dependency and lets
+# car + AER build. install.packages won't downgrade/upgrade an already-present dep, so the loop
+# below reuses this 4.2.0. See econ2110.md runbook / decisions/0002.
+Rscript -e "install.packages('https://cran.r-project.org/src/contrib/Archive/Deriv/Deriv_4.2.0.tar.gz', repos=NULL, type='source')"
+
+for package in "${R_PACKAGES[@]}"
+do
+Rscript -e "install.packages(\"${package}\", repos=\"https://archive.linux.duke.edu/cran/\")"
+done
+
+for package in "${R_GH_PACKAGES[@]}"
+do
+Rscript -e "devtools::install_github(\"${package}\")"
+done
